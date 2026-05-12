@@ -3,6 +3,7 @@ import { Geist, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
+import AuthGate from "@/components/AuthGate";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -38,20 +39,22 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.variable} ${geist.variable} ${jetbrainsMono.variable} antialiased overflow-hidden selection:bg-primary/30 selection:text-primary-fixed-dim`}>
-        <div className="flex h-screen w-full relative">
-          {/* Background Ambient Glow */}
-          <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-            <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-primary/10 blur-[120px]"></div>
-            <div className="absolute top-[40%] -right-[10%] w-[40%] h-[40%] rounded-full bg-secondary-container/5 blur-[100px]"></div>
+        <AuthGate>
+          <div className="flex h-screen w-full relative">
+            {/* Background Ambient Glow */}
+            <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+              <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-primary/10 blur-[120px]"></div>
+              <div className="absolute top-[40%] right-[-10%] w-[40%] h-[40%] rounded-full bg-secondary-container/5 blur-[100px]"></div>
+            </div>
+            
+            <Sidebar />
+            
+            <div className="flex-1 flex flex-col h-full ml-0 md:ml-70 z-10 relative">
+              <Topbar />
+              {children}
+            </div>
           </div>
-          
-          <Sidebar />
-          
-          <div className="flex-1 flex flex-col h-full ml-0 md:ml-[280px] z-10 relative">
-            <Topbar />
-            {children}
-          </div>
-        </div>
+        </AuthGate>
       </body>
     </html>
   );
