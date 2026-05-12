@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 
-type Route = { id: string; route_name: string; route_number?: string; driver_name?: string; driver_phone?: string; bus_number?: string; capacity?: number; status: string; stops?: string };
+type Route = { id: string; route_name: string; route_number?: string; driver_name?: string; driver_phone?: string; bus_number?: string; capacity?: number; status: string; stops?: string[] };
 type Book  = { id: string; title: string; author: string; isbn?: string; category?: string; copies_total: number; copies_available: number; library_issues?: any[] };
 
 /* ── TRANSPORT ── */
@@ -18,6 +18,7 @@ export function TransportTab() {
   const [editRoute, setEditRoute] = useState<Route | null>(null);
   const [form, setForm] = useState({ route_name:"", route_number:"", driver_name:"", driver_phone:"", bus_number:"", capacity:40, status:"Active", stops:"" });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -29,20 +30,49 @@ export function TransportTab() {
   useEffect(() => { load(); }, [load]);
 
   const save = async (e: React.FormEvent) => {
-    e.preventDefault(); setSaving(true);
-    if (editRoute) {
-      await fetch(`/api/transport/${editRoute.id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(form) });
-    } else {
-      await fetch("/api/transport", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(form) });
+    e.preventDefault(); setSaving(true); setError("");
+    try {
+      // Convert stops comma-separated string to array for Postgres text[] column
+      const stopsArray = form.stops ? form.stops.split(',').map(s => s.trim()).filter(Boolean) : [];
+      
+      const payload = { 
+        ...form,
+        stops: stopsArray
+      };
+
+      const url = editRoute ? `/api/transport/${editRoute.id}` : "/api/transport";
+      const method = editRoute ? "PATCH" : "POST";
+      
+      const res = await fetch(url, { 
+        method, 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify(payload) 
+      });
+      
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || "Failed to save route");
+
+      setSaving(false); setShowAdd(false); setEditRoute(null);
+      setForm({ route_name:"", route_number:"", driver_name:"", driver_phone:"", bus_number:"", capacity:40, status:"Active", stops:"" });
+      load();
+    } catch (err: any) {
+      setError(err.message);
+      setSaving(false);
     }
-    setSaving(false); setShowAdd(false); setEditRoute(null);
-    setForm({ route_name:"", route_number:"", driver_name:"", driver_phone:"", bus_number:"", capacity:40, status:"Active", stops:"" });
-    load();
   };
 
   const openEdit = (r: Route) => {
     setEditRoute(r);
-    setForm({ route_name:r.route_name, route_number:r.route_number||"", driver_name:r.driver_name||"", driver_phone:r.driver_phone||"", bus_number:r.bus_number||"", capacity:r.capacity||40, status:r.status, stops:r.stops||"" });
+    setForm({ 
+      route_name: r.route_name, 
+      route_number: r.route_number || "", 
+      driver_name: r.driver_name || "", 
+      driver_phone: r.driver_phone || "", 
+      bus_number: r.bus_number || "", 
+      capacity: r.capacity || 40, 
+      status: r.status, 
+      stops: Array.isArray(r.stops) ? r.stops.join(', ') : "" 
+    });
     setShowAdd(true);
   };
 
@@ -94,7 +124,11 @@ export function TransportTab() {
                     {r.capacity && <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[12px]">event_seat</span>{r.capacity} seats</span>}
                     {r.driver_phone && <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[12px]">call</span>{r.driver_phone}</span>}
                   </div>
-                  {r.stops && <div className="text-[10px] text-white/30 mt-1 truncate">Stops: {r.stops}</div>}
+                  {r.stops && r.stops.length > 0 && (
+                    <div className="text-[10px] text-white/30 mt-1 truncate">
+                      Stops: {Array.isArray(r.stops) ? r.stops.join(' → ') : r.stops}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <select className={`text-[10px] px-2 py-1 rounded border outline-none font-mono ${ROUTE_STATUS[r.status]||"bg-white/10 text-white/40 border-white/10"}`} value={r.status} onChange={e => updateStatus(r.id, e.target.value)}>
@@ -114,8 +148,14 @@ export function TransportTab() {
           <div className="bg-[#0e1018] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl">
             <div className="flex justify-between items-center mb-5">
               <h2 className="text-base font-semibold text-white">{editRoute?"Edit Route":"Add Route"}</h2>
-              <button onClick={()=>{setShowAdd(false);setEditRoute(null);}} className="w-7 h-7 rounded hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white"><span className="material-symbols-outlined text-[16px]">close</span></button>
+              <button onClick={()=>{setShowAdd(false);setEditRoute(null);setError("");}} className="w-7 h-7 rounded hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white"><span className="material-symbols-outlined text-[16px]">close</span></button>
             </div>
+            {error && (
+              <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 text-xs flex items-start gap-2">
+                <span className="material-symbols-outlined text-[16px]">error</span>
+                <span>{error}</span>
+              </div>
+            )}
             <form onSubmit={save} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-[11px] text-white/40 mb-1">Route Name *</label>
@@ -163,6 +203,7 @@ export function LibraryTab() {
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ title:"", author:"", isbn:"", category:"", copies_total:1, copies_available:1 });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -174,11 +215,23 @@ export function LibraryTab() {
   useEffect(() => { load(); }, [load]);
 
   const save = async (e: React.FormEvent) => {
-    e.preventDefault(); setSaving(true);
-    await fetch("/api/library", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(form) });
-    setSaving(false); setShowAdd(false);
-    setForm({ title:"", author:"", isbn:"", category:"", copies_total:1, copies_available:1 });
-    load();
+    e.preventDefault(); setSaving(true); setError("");
+    try {
+      const res = await fetch("/api/library", { 
+        method:"POST", 
+        headers:{"Content-Type":"application/json"}, 
+        body:JSON.stringify(form) 
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || "Failed to add book");
+
+      setSaving(false); setShowAdd(false);
+      setForm({ title:"", author:"", isbn:"", category:"", copies_total:1, copies_available:1 });
+      load();
+    } catch (err: any) {
+      setError(err.message);
+      setSaving(false);
+    }
   };
 
   const exportCSV = () => {
@@ -268,8 +321,14 @@ export function LibraryTab() {
           <div className="bg-[#0e1018] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl">
             <div className="flex justify-between items-center mb-5">
               <h2 className="text-base font-semibold text-white">Add Book</h2>
-              <button onClick={()=>setShowAdd(false)} className="w-7 h-7 rounded hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white"><span className="material-symbols-outlined text-[16px]">close</span></button>
+              <button onClick={()=>{setShowAdd(false);setError("");}} className="w-7 h-7 rounded hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white"><span className="material-symbols-outlined text-[16px]">close</span></button>
             </div>
+            {error && (
+              <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 text-xs flex items-start gap-2">
+                <span className="material-symbols-outlined text-[16px]">error</span>
+                <span>{error}</span>
+              </div>
+            )}
             <form onSubmit={save} className="space-y-3">
               <div><label className="block text-[11px] text-white/40 mb-1">Title *</label>
                 <input required className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} /></div>

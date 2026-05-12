@@ -29,19 +29,38 @@ export default function ExamScheduleTab({ exams, courses, loading, onRefresh }: 
   const [form, setForm]         = useState({ course_id: "", exam_type: "Mid-Term", scheduled_at: "", room: "", duration_minutes: 180, total_marks: 100 });
   const [saving, setSaving]     = useState(false);
   const [filterType, setFilterType] = useState("");
+  const [error, setError]       = useState("");
 
   const filtered = filterType ? exams.filter(e => e.exam_type === filterType) : exams;
 
   const submitExam = async (e: React.FormEvent) => {
-    e.preventDefault(); setSaving(true);
-    if (editId) {
-      await fetch(`/api/exams/${editId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-    } else {
-      await fetch("/api/exams", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, status: "Scheduled" }) });
+    e.preventDefault(); setSaving(true); setError("");
+    try {
+      const payload = { 
+        ...form, 
+        scheduled_at: new Date(form.scheduled_at).toISOString(),
+        status: editId ? undefined : "Scheduled" 
+      };
+      
+      const url = editId ? `/api/exams/${editId}` : "/api/exams";
+      const method = editId ? "PATCH" : "POST";
+      
+      const res = await fetch(url, { 
+        method, 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify(payload) 
+      });
+      
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || "Failed to save exam");
+
+      setSaving(false); setShowAdd(false); setEditId(null);
+      setForm({ course_id: "", exam_type: "Mid-Term", scheduled_at: "", room: "", duration_minutes: 180, total_marks: 100 });
+      onRefresh();
+    } catch (err: any) {
+      setError(err.message);
+      setSaving(false);
     }
-    setSaving(false); setShowAdd(false); setEditId(null);
-    setForm({ course_id: "", exam_type: "Mid-Term", scheduled_at: "", room: "", duration_minutes: 180, total_marks: 100 });
-    onRefresh();
   };
 
   const openEdit = (ex: Exam) => {
@@ -144,10 +163,16 @@ export default function ExamScheduleTab({ exams, courses, loading, onRefresh }: 
           <div className="bg-[#0e1018] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl">
             <div className="flex justify-between items-center mb-5">
               <h2 className="text-base font-semibold text-white">{editId ? "Edit Exam" : "Schedule New Exam"}</h2>
-              <button onClick={() => { setShowAdd(false); setEditId(null); }} className="w-7 h-7 rounded hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white">
+              <button onClick={() => { setShowAdd(false); setEditId(null); setError(""); }} className="w-7 h-7 rounded hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white">
                 <span className="material-symbols-outlined text-[16px]">close</span>
               </button>
             </div>
+            {error && (
+              <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 text-xs flex items-start gap-2">
+                <span className="material-symbols-outlined text-[16px]">error</span>
+                <span>{error}</span>
+              </div>
+            )}
             <form onSubmit={submitExam} className="space-y-3">
               {!editId && (
                 <div>

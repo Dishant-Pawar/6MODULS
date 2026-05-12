@@ -25,6 +25,7 @@ export default function CoursesTab({ courses, faculty, programs, loading, onRefr
   const [search, setSearch] = useState("");
   const [form, setForm] = useState({ code: "", name: "", credits: 3, faculty_id: "", program_id: "", room: "", schedule_day: "", schedule_time: "" });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   const filtered = courses.filter(c => {
     const q = search.toLowerCase();
@@ -32,15 +33,34 @@ export default function CoursesTab({ courses, faculty, programs, loading, onRefr
   });
 
   const submitCourse = async (e: React.FormEvent) => {
-    e.preventDefault(); setSaving(true);
-    if (editCourse) {
-      await fetch(`/api/courses/${editCourse.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-    } else {
-      await fetch("/api/courses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    e.preventDefault(); setSaving(true); setError("");
+    try {
+      // Convert empty strings to null for UUID columns
+      const payload = { 
+        ...form,
+        faculty_id: form.faculty_id || null,
+        program_id: form.program_id || null
+      };
+
+      const url = editCourse ? `/api/courses/${editCourse.id}` : "/api/courses";
+      const method = editCourse ? "PATCH" : "POST";
+
+      const res = await fetch(url, { 
+        method, 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify(payload) 
+      });
+
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || "Failed to save course");
+
+      setSaving(false); setShowAdd(false); setEditCourse(null);
+      setForm({ code: "", name: "", credits: 3, faculty_id: "", program_id: "", room: "", schedule_day: "", schedule_time: "" });
+      onRefresh();
+    } catch (err: any) {
+      setError(err.message);
+      setSaving(false);
     }
-    setSaving(false); setShowAdd(false); setEditCourse(null);
-    setForm({ code: "", name: "", credits: 3, faculty_id: "", program_id: "", room: "", schedule_day: "", schedule_time: "" });
-    onRefresh();
   };
 
   const openEdit = (c: Course) => {
@@ -136,10 +156,16 @@ export default function CoursesTab({ courses, faculty, programs, loading, onRefr
           <div className="bg-[#0e1018] border border-white/10 rounded-2xl p-6 w-full max-w-lg shadow-2xl">
             <div className="flex justify-between items-center mb-5">
               <h2 className="text-base font-semibold text-white">{editCourse ? "Edit Course" : "Add New Course"}</h2>
-              <button onClick={() => { setShowAdd(false); setEditCourse(null); }} className="w-7 h-7 rounded hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white">
+              <button onClick={() => { setShowAdd(false); setEditCourse(null); setError(""); }} className="w-7 h-7 rounded hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white">
                 <span className="material-symbols-outlined text-[16px]">close</span>
               </button>
             </div>
+            {error && (
+              <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 text-xs flex items-start gap-2">
+                <span className="material-symbols-outlined text-[16px]">error</span>
+                <span>{error}</span>
+              </div>
+            )}
             <form onSubmit={submitCourse} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>

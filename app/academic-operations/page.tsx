@@ -9,13 +9,12 @@ type Course = { id: string; code: string; name: string; credits?: number; facult
 type Faculty = { id: string; full_name: string; department?: string };
 type Program = { id: string; name: string; code: string; degree_type: string };
 
-type Tab = "exams" | "marks" | "courses" | "timetable";
+type Tab = "exams" | "marks" | "courses";
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: "exams",     label: "Exam Schedule", icon: "fact_check"  },
   { key: "marks",     label: "Marks Entry",   icon: "scoreboard"  },
   { key: "courses",   label: "Courses",       icon: "menu_book"   },
-  { key: "timetable", label: "Timetable",     icon: "calendar_month" },
 ];
 
 const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
@@ -96,74 +95,7 @@ export default function AcademicOperations() {
         {tab === "exams"     && <ExamScheduleTab exams={exams} courses={courses} loading={loading} onRefresh={fetchAll} />}
         {tab === "marks"     && <MarksTab courses={courses} />}
         {tab === "courses"   && <CoursesTab courses={courses} faculty={faculty} programs={programs} loading={loading} onRefresh={fetchAll} />}
-        {tab === "timetable" && <TimetableView courses={courses} />}
       </div>
     </main>
-  );
-}
-
-function TimetableView({ courses }: { courses: Course[] }) {
-  // Build timetable grid from courses with schedule_day + schedule_time
-  const scheduled = courses.filter(c => c.schedule_day && c.schedule_time);
-
-  const cellFor = (day: string, slot: string) =>
-    scheduled.filter(c => c.schedule_day === day && c.schedule_time && c.schedule_time.startsWith(slot.slice(0, 2)));
-
-  const colors = ["bg-indigo-500/20 border-indigo-500/30 text-indigo-200",
-    "bg-violet-500/20 border-violet-500/30 text-violet-200",
-    "bg-emerald-500/20 border-emerald-500/30 text-emerald-200",
-    "bg-amber-500/20 border-amber-500/30 text-amber-200",
-    "bg-teal-500/20 border-teal-500/30 text-teal-200",
-    "bg-pink-500/20 border-pink-500/30 text-pink-200"];
-
-  const colorFor = (id: string) => colors[parseInt(id.replace(/-/g,"").slice(0,4),16) % colors.length];
-
-  return (
-    <div className="bg-white/[0.03] border border-white/10 rounded-xl overflow-hidden">
-      <div className="p-4 border-b border-white/10">
-        <h3 className="text-base font-semibold text-white">Weekly Timetable</h3>
-        <p className="text-xs text-white/40 mt-0.5">Courses with scheduled days & times</p>
-      </div>
-      {scheduled.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-white/30 gap-2">
-          <span className="material-symbols-outlined text-4xl">calendar_today</span>
-          <span className="text-sm">No timetable data — add schedule_day & schedule_time to courses</span>
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm" style={{ minWidth: 700 }}>
-            <thead>
-              <tr className="border-b border-white/10">
-                <th className="py-3 px-4 text-[11px] text-white/30 uppercase w-20">Time</th>
-                {DAYS.map(d => (
-                  <th key={d} className={`py-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-center ${d === DAYS[new Date().getDay()-1] ? "text-white" : "text-white/30"}`}>{d.slice(0,3)}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {SLOTS.map(slot => (
-                <tr key={slot} className="hover:bg-white/[0.02] transition-colors">
-                  <td className="py-2 px-4 font-mono text-[11px] text-white/30 whitespace-nowrap">{slot}</td>
-                  {DAYS.map(day => {
-                    const cells = cellFor(day, slot);
-                    return (
-                      <td key={day} className="py-1.5 px-1.5 align-top" style={{ minWidth: 110 }}>
-                        {cells.map(c => (
-                          <div key={c.id} className={`rounded-lg border px-2 py-1.5 mb-1 ${colorFor(c.id)}`}>
-                            <div className="text-[11px] font-semibold truncate">{c.name}</div>
-                            <div className="text-[10px] opacity-70 font-mono">{c.code}{c.room ? ` · ${c.room}` : ""}</div>
-                            {c.faculty?.full_name && <div className="text-[10px] opacity-60 truncate">{c.faculty.full_name}</div>}
-                          </div>
-                        ))}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
   );
 }

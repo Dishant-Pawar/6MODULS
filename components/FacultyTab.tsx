@@ -60,9 +60,17 @@ export default function FacultyTab() {
   };
 
   const deleteFaculty = async (id: string) => {
-    if (!confirm("Delete this faculty member?")) return;
-    await fetch(`/api/faculty/${id}`, { method: "DELETE" });
-    setSelected(null); fetch_();
+    if (!confirm("Delete this faculty member? This cannot be undone.")) return;
+    try {
+      const res = await fetch(`/api/faculty/${id}`, { method: "DELETE" });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || "Failed to delete faculty member");
+      
+      setSelected(null); 
+      fetch_();
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    }
   };
 
   const openDrawer = (f: Faculty) => { setSelected(f); setEditForm({ full_name: f.full_name, email: f.email, phone: f.phone, department: f.department, designation: f.designation, specialization: f.specialization, status: f.status }); };

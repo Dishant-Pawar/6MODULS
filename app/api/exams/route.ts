@@ -5,8 +5,7 @@ export async function GET() {
   const { data, error } = await supabaseAdmin
     .from('exams')
     .select('*, courses(name, code, room, faculty(full_name))')
-    .gte('scheduled_at', new Date().toISOString())
-    .order('scheduled_at', { ascending: true });
+    .order('scheduled_at', { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ data });

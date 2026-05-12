@@ -56,7 +56,13 @@ export default function Sidebar() {
           <span className="material-symbols-outlined text-[20px]">help</span>
           <span className="font-body-sm text-body-sm">Support</span>
         </button>
-        <button className="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-outline hover:text-primary dark:hover:text-primary-fixed-dim border-l-4 border-transparent hover:bg-primary-container/10 transition-colors duration-200 active:scale-95 transition-transform w-full text-left">
+        <button 
+          onClick={() => {
+            localStorage.removeItem("erp_admin_auth_ok");
+            window.dispatchEvent(new Event("erp-auth"));
+          }}
+          className="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-outline hover:text-primary dark:hover:text-primary-fixed-dim border-l-4 border-transparent hover:bg-primary-container/10 transition-colors duration-200 active:scale-95 transition-transform w-full text-left"
+        >
           <span className="material-symbols-outlined text-[20px]">logout</span>
           <span className="font-body-sm text-body-sm">Logout</span>
         </button>

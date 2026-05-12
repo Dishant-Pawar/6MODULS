@@ -12,6 +12,8 @@ const MOCK_NOTIFS = [
   { id:"6", icon:"build",          color:"amber",  title:"Maintenance ticket resolved",sub:"TKT-8891 · Hostel Block",     time:"1d ago",  read:true  },
 ];
 
+const AUTH_STORAGE_KEY = "erp_admin_auth_ok";
+
 type Notif = typeof MOCK_NOTIFS[0];
 
 export default function Topbar() {
@@ -63,6 +65,13 @@ export default function Topbar() {
 
   const markAllRead = () => setNotifs(n=>n.map(x=>({...x,read:true})));
   const markRead    = (id: string) => setNotifs(n=>n.map(x=>x.id===id?{...x,read:true}:x));
+  const handleSignOut = () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+      window.dispatchEvent(new Event("erp-auth"));
+    }
+    setShowProfile(false);
+  };
 
   return (
     <>
@@ -181,7 +190,7 @@ export default function Topbar() {
                   ))}
                 </div>
                 <div className="border-t border-white/10 py-1">
-                  <button className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-red-500/10 transition-colors text-left">
+                  <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-red-500/10 transition-colors text-left">
                     <span className="material-symbols-outlined text-red-400 text-[16px]">logout</span>
                     <span className="text-sm text-red-400">Sign Out</span>
                   </button>

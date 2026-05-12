@@ -70,8 +70,16 @@ export default function StudentsTab({ programs }: Props) {
 
   const deleteStudent = async (id: string) => {
     if (!confirm("Delete this student? This cannot be undone.")) return;
-    await fetch(`/api/students/${id}`, { method: "DELETE" });
-    setSelected(null); fetch_();
+    try {
+      const res = await fetch(`/api/students/${id}`, { method: "DELETE" });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || "Failed to delete student");
+      
+      setSelected(null); 
+      fetch_();
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    }
   };
 
   const openDrawer = (s: Student) => { setSelected(s); setEditForm({ full_name: s.full_name, email: s.email, phone: s.phone, year: s.year, semester: s.semester, status: s.status }); };

@@ -103,6 +103,8 @@ export type Exam = {
   scheduled_at: string;
   room?: string;
   duration_minutes: number;
+  total_marks?: number;
+  status?: string;
   courses?: Course;
 };
 
